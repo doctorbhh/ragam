@@ -3,10 +3,25 @@ const INSTANCES_URL = 'https://raw.githubusercontent.com/n-ce/Uma/main/dynamic_i
 
 const STORAGE_KEY_INSTANCE = 'ragam_selected_instance';
 const STORAGE_KEY_QUALITY = 'ragam_audio_quality';
+const STORAGE_KEY_PROVIDER = 'ragam_search_provider';
 
-// Default fallback if nothing is selected or fetch fails
-export const DEFAULT_INSTANCE = 'https://api.piped.private.coffee'; // First item in your piped list
+export const DEFAULT_INSTANCE = 'https://api.piped.private.coffee';
 export const DEFAULT_QUALITY = 'high';
+export const DEFAULT_PROVIDER = 'youtube'; // 'youtube' or 'jiosaavn'
+
+// --- PROVIDER MANAGEMENT ---
+
+export const getSearchProvider = () => {
+    return localStorage.getItem(STORAGE_KEY_PROVIDER) || DEFAULT_PROVIDER;
+};
+
+export const setSearchProvider = (provider) => {
+    if (['youtube', 'jiosaavn'].includes(provider)) {
+        localStorage.setItem(STORAGE_KEY_PROVIDER, provider);
+        return provider;
+    }
+    return DEFAULT_PROVIDER;
+};
 
 // --- INSTANCE MANAGEMENT ---
 
@@ -16,7 +31,6 @@ export const getSavedInstance = () => {
 
 export const setSavedInstance = (url) => {
     if (url) {
-        // Remove trailing slash if present
         const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
         localStorage.setItem(STORAGE_KEY_INSTANCE, cleanUrl);
         return cleanUrl;
@@ -44,28 +58,16 @@ export const fetchInstances = async () => {
     try {
         const response = await fetch(INSTANCES_URL);
         if (!response.ok) throw new Error('Failed to fetch instances');
-
         const data = await response.json();
-        console.log("Raw instances data:", data); // DEBUG LOG
 
         let parsedInstances = [];
-
-        // The JSON structure has a "piped" key which is an array of strings
         if (data.piped && Array.isArray(data.piped)) {
             parsedInstances = data.piped.map(url => {
                 try {
-                    return {
-                        name: new URL(url).hostname,
-                        api_url: url
-                    };
-                } catch (e) {
-                    console.warn("Invalid URL in piped list:", url);
-                    return null;
-                }
+                    return { name: new URL(url).hostname, api_url: url };
+                } catch (e) { return null; }
             }).filter(item => item !== null);
         }
-
-        console.log("Parsed Piped instances:", parsedInstances); // DEBUG LOG
         return parsedInstances;
     } catch (error) {
         console.error("Error fetching instances:", error);
@@ -75,5 +77,5 @@ export const fetchInstances = async () => {
 
 export const clearAllData = () => {
     localStorage.clear();
-    window.location.href = '/'; // Hard reload to login page/home
+    window.location.href = '/';
 };

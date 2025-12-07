@@ -3,11 +3,9 @@ import {
   Server,
   Trash2,
   RefreshCw,
-  Check,
-  AlertTriangle,
-  Loader2,
-  Music,
   Signal,
+  AlertTriangle,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,18 +42,22 @@ import {
   DEFAULT_INSTANCE,
   getAudioQuality,
   setAudioQuality,
+  getSearchProvider,
+  setSearchProvider,
 } from "@/services/instanceService";
 
 const Settings = () => {
   const [instances, setInstances] = useState([]);
   const [currentInstance, setCurrentInstance] = useState(DEFAULT_INSTANCE);
   const [currentQuality, setCurrentQuality] = useState("high");
+  const [currentProvider, setCurrentProvider] = useState("youtube");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadInstances();
     setCurrentInstance(getSavedInstance());
     setCurrentQuality(getAudioQuality());
+    setCurrentProvider(getSearchProvider());
   }, []);
 
   const loadInstances = async () => {
@@ -87,6 +89,16 @@ const Settings = () => {
     toast.success(`Audio quality set to ${value}`);
   };
 
+  const handleProviderChange = (value) => {
+    setSearchProvider(value);
+    setCurrentProvider(value);
+    toast.success(
+      `Search provider switched to ${
+        value === "jiosaavn" ? "JioSaavn" : "YouTube"
+      }`
+    );
+  };
+
   const handleClearData = () => {
     clearAllData();
   };
@@ -96,60 +108,85 @@ const Settings = () => {
       <h1 className="text-3xl font-bold mb-6">Settings</h1>
 
       <div className="space-y-6">
-        {/* API Instance Settings */}
+        {/* Search Provider Settings */}
         <Card className="border-border/50 bg-card/50 backdrop-blur">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Server className="h-5 w-5 text-primary" />
-              <CardTitle>Search API Instance</CardTitle>
+              <Globe className="h-5 w-5 text-primary" />
+              <CardTitle>Search Provider</CardTitle>
             </div>
             <CardDescription>
-              Select the server used for searching songs. Uses Piped API.
+              Choose where to search and fetch songs from.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Select
-                value={currentInstance}
-                onValueChange={handleInstanceChange}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select an instance" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={DEFAULT_INSTANCE}>
-                    Default ({new URL(DEFAULT_INSTANCE).hostname})
-                  </SelectItem>
-                  {instances.map((inst, idx) => (
-                    <SelectItem key={idx} value={inst.api_url}>
-                      {inst.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={loadInstances}
-                disabled={loading}
-                title="Refresh List"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-                />
-              </Button>
-            </div>
-
-            <div className="text-xs text-muted-foreground flex items-center gap-2">
-              <Check className="h-3 w-3 text-green-500" />
-              Current:{" "}
-              <span className="font-mono bg-muted px-1 rounded">
-                {currentInstance}
-              </span>
-            </div>
+          <CardContent>
+            <Select
+              value={currentProvider}
+              onValueChange={handleProviderChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="youtube">
+                  YouTube (Piped + Invidious)
+                </SelectItem>
+                <SelectItem value="jiosaavn">
+                  JioSaavn (Fast & Direct)
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </CardContent>
         </Card>
+
+        {/* API Instance Settings (Only show if YouTube) */}
+        {currentProvider === "youtube" && (
+          <Card className="border-border/50 bg-card/50 backdrop-blur">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Server className="h-5 w-5 text-primary" />
+                <CardTitle>Piped Instance</CardTitle>
+              </div>
+              <CardDescription>
+                Select the Piped server used for YouTube searches.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                <Select
+                  value={currentInstance}
+                  onValueChange={handleInstanceChange}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an instance" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={DEFAULT_INSTANCE}>
+                      Default ({new URL(DEFAULT_INSTANCE).hostname})
+                    </SelectItem>
+                    {instances.map((inst, idx) => (
+                      <SelectItem key={idx} value={inst.api_url}>
+                        {inst.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={loadInstances}
+                  disabled={loading}
+                  title="Refresh List"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                  />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Audio Quality Settings */}
         <Card className="border-border/50 bg-card/50 backdrop-blur">
@@ -158,9 +195,7 @@ const Settings = () => {
               <Signal className="h-5 w-5 text-primary" />
               <CardTitle>Audio Quality</CardTitle>
             </div>
-            <CardDescription>
-              Adjust streaming quality. Higher quality uses more data.
-            </CardDescription>
+            <CardDescription>Adjust streaming quality.</CardDescription>
           </CardHeader>
           <CardContent>
             <Select value={currentQuality} onValueChange={handleQualityChange}>
@@ -199,8 +234,7 @@ const Settings = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will delete all local settings, cached data, and logout
-                    your session. This action cannot be undone.
+                    This will delete all local settings and reset the app.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
